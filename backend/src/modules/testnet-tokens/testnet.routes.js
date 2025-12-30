@@ -43,6 +43,13 @@ router.get('/tokens/trending', TestnetTokenController.getTrendingTokens);
 router.get('/tokens/new', TestnetTokenController.getNewTokens);
 
 /**
+ * @route   GET /api/testnet/tokens/tradable
+ * @desc    Get tradable tokens (tokens with liquidity)
+ * @access  Public
+ */
+router.get('/tokens/tradable', TestnetTokenController.getTradableTokens);
+
+/**
  * @route   GET /api/testnet/tokens/search
  * @desc    Search tokens by name, symbol, or mint
  * @access  Public

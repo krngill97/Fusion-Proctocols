@@ -168,6 +168,8 @@ import volumeRoutes from './modules/volume-bot/volume.routes.js';
 import testnetRoutes from './modules/testnet-tokens/testnet.routes.js';
 import solanaTokenRoutes from './modules/testnet-tokens/solana-token.routes.js';
 import devnetVolumeRoutes from './routes/devnet-volume.routes.js';
+import liquidityRoutes from './modules/liquidity/liquidity.routes.js';
+import chartRoutes from './modules/charts/chart.routes.js';
 
 // Import WebSocket
 import { wsManager } from './websocket/index.js';
@@ -201,6 +203,12 @@ app.use('/api/solana', solanaTokenRoutes);
 
 // Devnet volume bot routes
 app.use('/api/devnet-volume', devnetVolumeRoutes);
+
+// Liquidity pool routes
+app.use('/api/liquidity', liquidityRoutes);
+
+// Chart data routes
+app.use('/api/charts', chartRoutes);
 
 // ------------------------------------
 // Error Handling
@@ -295,9 +303,8 @@ const startServer = async () => {
     await initializeWebSocket();
 
     // Initialize WebSocket server for clients
-    // TEMPORARILY DISABLED - WebSocket causing startup issues
-    // logger.info('Initializing client WebSocket server...');
-    // wsManager.initialize(httpServer);
+    logger.info('Initializing client WebSocket server...');
+    wsManager.initialize(httpServer);
 
     // Start HTTP server with better error handling
     httpServer.on('error', (error) => {

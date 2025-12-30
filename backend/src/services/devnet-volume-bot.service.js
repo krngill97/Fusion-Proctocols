@@ -21,8 +21,49 @@ import {
   getAccount,
   TOKEN_PROGRAM_ID,
 } from '@solana/spl-token';
+import bs58 from 'bs58';
+import * as jupiterService from '../modules/trading-engine/jupiter.service.js';
+import TestnetTrade from '../modules/testnet-tokens/testnet-trade.model.js';
+import TestnetToken from '../modules/testnet-tokens/testnet-token.model.js';
+import wsEvents from '../websocket/ws-events.js';
 
 const DEVNET_ENDPOINT = 'https://api.devnet.solana.com';
+const SOL_MINT = 'So11111111111111111111111111111111111111112';
+
+/**
+ * Parse private key from either JSON array format or base58 format
+ * @param {string} keyInput - Private key as JSON array "[123,45,67,...]" or base58 string
+ * @returns {Uint8Array} - Private key as Uint8Array
+ */
+function parsePrivateKey(keyInput) {
+  if (!keyInput || typeof keyInput !== 'string') {
+    throw new Error('Private key must be a string');
+  }
+
+  // Try parsing as JSON array first (e.g., "[123,45,67,...]")
+  if (keyInput.trim().startsWith('[')) {
+    try {
+      const parsed = JSON.parse(keyInput);
+      if (!Array.isArray(parsed)) {
+        throw new Error('JSON private key must be an array');
+      }
+      return Uint8Array.from(parsed);
+    } catch (error) {
+      throw new Error(`Invalid JSON array format for private key: ${error.message}`);
+    }
+  }
+
+  // Try parsing as base58 string
+  try {
+    const decoded = bs58.decode(keyInput);
+    if (decoded.length !== 64) {
+      throw new Error(`Invalid private key length: expected 64 bytes, got ${decoded.length}`);
+    }
+    return decoded;
+  } catch (error) {
+    throw new Error(`Invalid base58 format for private key: ${error.message}`);
+  }
+}
 
 class DevnetVolumeBotService {
   constructor() {
@@ -51,9 +92,9 @@ class DevnetVolumeBotService {
       maxTransferAmount = 100,
     } = config;
 
-    // Create funding wallet from private key
+    // Create funding wallet from private key (supports both JSON array and base58 formats)
     const fundingKeypair = Keypair.fromSecretKey(
-      Uint8Array.from(JSON.parse(fundingWalletPrivateKey))
+      parsePrivateKey(fundingWalletPrivateKey)
     );
 
     // Generate maker wallets
@@ -218,12 +259,36 @@ class DevnetVolumeBotService {
 
     const tradeInterval = (60 * 1000) / session.config.tradesPerMinute;
 
+    // Check if token has liquidity pool (only check once at start)
+    let hasLiquidityPool = false;
+    let useSwaps = session.config.useSwaps !== false; // Default to true if not specified
+
+    try {
+      const token = await TestnetToken.findOne({ mint: tokenMint.toBase58() });
+      if (token && token.lifecycle?.poolAddress) {
+        hasLiquidityPool = true;
+        console.log(`[Devnet Volume Bot] Token has liquidity pool, will use real swaps`);
+      } else {
+        console.log(`[Devnet Volume Bot] Token has no liquidity pool, will use transfers`);
+        useSwaps = false; // Force transfers if no pool
+      }
+    } catch (error) {
+      console.error(`[Devnet Volume Bot] Error checking token liquidity:`, error);
+      useSwaps = false; // Fallback to transfers on error
+    }
+
     while (session.status === 'running' && new Date() < session.endTime) {
       try {
-        await this.executeTransfer(sessionId, tokenMint);
+        if (useSwaps && hasLiquidityPool) {
+          // Execute real Jupiter swaps for tokens with liquidity
+          await this.executeSwap(sessionId, tokenMint);
+        } else {
+          // Execute simple transfers for tokens without liquidity
+          await this.executeTransfer(sessionId, tokenMint);
+        }
         await this.sleep(tradeInterval);
       } catch (error) {
-        console.error(`[Devnet Volume Bot] Transfer error:`, error);
+        console.error(`[Devnet Volume Bot] Trade error:`, error);
         session.stats.failedTransfers++;
       }
     }
@@ -317,6 +382,196 @@ class DevnetVolumeBotService {
 
     } catch (error) {
       console.error(`[Devnet Volume Bot] Transfer failed:`, error.message);
+      session.stats.failedTransfers++;
+    }
+  }
+
+  /**
+   * Execute a swap (buy or sell) using Jupiter
+   * @param {string} sessionId - Session ID
+   * @param {PublicKey} tokenMint - Token mint address
+   */
+  async executeSwap(sessionId, tokenMint) {
+    const session = this.activeSessions.get(sessionId);
+    if (!session) return;
+
+    // Randomly choose buy or sell based on buyProbability config
+    const buyProbability = session.config.buyProbability || 0.5;
+    const isBuy = Math.random() < buyProbability;
+
+    // Pick a random wallet
+    const walletIndex = Math.floor(Math.random() * session.makerWallets.length);
+    const wallet = session.makerWallets[walletIndex];
+
+    try {
+      let result;
+      let tradeType;
+      let solAmount;
+      let tokenAmount;
+
+      if (isBuy) {
+        // BUY: SOL → Token
+        solAmount = this.randomBetween(
+          session.config.minSolAmount || 0.01,
+          session.config.maxSolAmount || 0.1
+        );
+
+        console.log(`[Devnet Volume Bot] Attempting BUY: ${solAmount} SOL for tokens`);
+
+        // Get quote
+        const quote = await jupiterService.getQuote({
+          inputMint: SOL_MINT,
+          outputMint: tokenMint.toBase58(),
+          amount: Math.floor(solAmount * LAMPORTS_PER_SOL),
+          slippageBps: 500 // 5% slippage for volume bot
+        });
+
+        if (!quote || !quote.routePlan) {
+          console.log(`[Devnet Volume Bot] No route found for BUY, skipping`);
+          return;
+        }
+
+        // Execute swap
+        result = await jupiterService.executeSwap({
+          wallet: wallet.keypair,
+          route: quote,
+          slippageBps: 500
+        });
+
+        tokenAmount = result.outputAmount / Math.pow(10, 9); // Assuming 9 decimals
+        tradeType = 'buy';
+
+      } else {
+        // SELL: Token → SOL
+        // Check token balance
+        const tokenAccount = await getAssociatedTokenAddress(
+          tokenMint,
+          wallet.keypair.publicKey
+        );
+
+        try {
+          const account = await getAccount(this.connection, tokenAccount);
+          const balance = Number(account.amount);
+
+          if (balance < (session.config.minTokenAmount || 10)) {
+            console.log(`[Devnet Volume Bot] Insufficient token balance for SELL, skipping`);
+            return;
+          }
+
+          tokenAmount = this.randomBetween(
+            session.config.minTokenAmount || 10,
+            Math.min(session.config.maxTokenAmount || 1000, balance * 0.5)
+          );
+
+          console.log(`[Devnet Volume Bot] Attempting SELL: ${tokenAmount} tokens for SOL`);
+
+          // Get quote
+          const quote = await jupiterService.getQuote({
+            inputMint: tokenMint.toBase58(),
+            outputMint: SOL_MINT,
+            amount: Math.floor(tokenAmount),
+            slippageBps: 500
+          });
+
+          if (!quote || !quote.routePlan) {
+            console.log(`[Devnet Volume Bot] No route found for SELL, skipping`);
+            return;
+          }
+
+          // Execute swap
+          result = await jupiterService.executeSwap({
+            wallet: wallet.keypair,
+            route: quote,
+            slippageBps: 500
+          });
+
+          solAmount = result.outputAmount / LAMPORTS_PER_SOL;
+          tradeType = 'sell';
+
+        } catch (error) {
+          console.log(`[Devnet Volume Bot] Token account not found or error:`, error.message);
+          return;
+        }
+      }
+
+      // Record the trade
+      const signature = result.txid;
+      const solscanUrl = `https://solscan.io/tx/${signature}?cluster=devnet`;
+      const price = isBuy ? (solAmount / tokenAmount) : (solAmount / tokenAmount);
+
+      // Save to TestnetTrade model
+      await TestnetTrade.create({
+        signature,
+        tokenMint: tokenMint.toBase58(),
+        wallet: wallet.keypair.publicKey.toBase58(),
+        type: tradeType,
+        solAmount,
+        tokenAmount,
+        price,
+        priceImpact: result.priceImpact || 0,
+        slippagePercent: 5,
+        isVolumeBot: true,
+        volumeSessionId: sessionId,
+        status: 'confirmed',
+        timestamp: new Date(),
+        network: 'devnet'
+      });
+
+      // Update session stats
+      session.stats.totalTransfers++;
+      session.stats.successfulTransfers++;
+      session.stats.totalVolume += solAmount;
+
+      if (tradeType === 'buy') {
+        session.stats.buyCount = (session.stats.buyCount || 0) + 1;
+      } else {
+        session.stats.sellCount = (session.stats.sellCount || 0) + 1;
+      }
+
+      session.transactions.push({
+        signature,
+        type: tradeType,
+        wallet: wallet.publicKey,
+        solAmount,
+        tokenAmount,
+        price,
+        timestamp: new Date(),
+        solscanUrl,
+      });
+
+      // Update token stats
+      const token = await TestnetToken.findOne({ mint: tokenMint.toBase58() });
+      if (token) {
+        token.recordTrade(tradeType, solAmount);
+        await token.save();
+
+        // Emit WebSocket events for real-time updates
+        wsEvents.emitVolumeBotTrade({
+          tokenMint: tokenMint.toBase58(),
+          type: tradeType,
+          solAmount,
+          tokenAmount,
+          price,
+          signature,
+          solscanUrl,
+          sessionId,
+          wallet: wallet.keypair.publicKey.toBase58(),
+          timestamp: new Date().toISOString()
+        });
+
+        // Emit price update event
+        wsEvents.emitPriceUpdate(
+          tokenMint.toBase58(),
+          price,
+          token.priceChange24h || 0
+        );
+      }
+
+      console.log(`[Devnet Volume Bot] ${tradeType.toUpperCase()} executed: ${solAmount} SOL`);
+      console.log(`[Devnet Volume Bot] Solscan: ${solscanUrl}`);
+
+    } catch (error) {
+      console.error(`[Devnet Volume Bot] Swap failed:`, error.message);
       session.stats.failedTransfers++;
     }
   }

@@ -11,6 +11,7 @@ import TestnetLab from './pages/TestnetLab';
 import TestnetTokenPage from './pages/TestnetTokenPage';
 import TokenLaunch from './pages/TokenLaunch';
 import RealTokenLaunch from './pages/RealTokenLaunch';
+import TradableTokens from './pages/TradableTokens';
 import Settings from './pages/Settings';
 import ConnectWallet from './pages/ConnectWallet';
 
@@ -58,6 +59,7 @@ function App() {
           <Route path="testnet" element={<TestnetLab />} />
           <Route path="testnet-lab" element={<TestnetLab />} />
           <Route path="testnet/token/:mint" element={<TestnetTokenPage />} />
+          <Route path="tokens" element={<TradableTokens />} />
           <Route path="token-launch" element={<TokenLaunch />} />
           <Route path="real-token-launch" element={<RealTokenLaunch />} />
           <Route path="settings" element={<Settings />} />

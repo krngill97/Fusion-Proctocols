@@ -148,6 +148,103 @@ class WSEventEmitter extends EventEmitter {
       });
     });
 
+    // Testnet Token Events
+    this.on('token:created', (data) => {
+      log.debug('Emitting token created event');
+      wsManager.broadcastToRoom('testnet', {
+        type: 'TOKEN_CREATED',
+        data,
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    this.on('token:liquidity_added', (data) => {
+      log.debug('Emitting token liquidity added event');
+      wsManager.broadcastToRoom('testnet', {
+        type: 'TOKEN_LIQUIDITY_ADDED',
+        data,
+        timestamp: new Date().toISOString()
+      });
+      // Also broadcast to specific token room
+      wsManager.broadcastToRoom(`token:${data.tokenMint}`, {
+        type: 'LIQUIDITY_ADDED',
+        data,
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    this.on('token:status_changed', (data) => {
+      log.debug('Emitting token status changed event');
+      wsManager.broadcastToRoom(`token:${data.tokenMint}`, {
+        type: 'TOKEN_STATUS_CHANGED',
+        data,
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    // Trading Events (Testnet)
+    this.on('trade:new', (data) => {
+      log.debug('Emitting new trade event');
+      // Broadcast to token-specific room
+      wsManager.broadcastToRoom(`token:${data.tokenMint}`, {
+        type: 'NEW_TRADE',
+        data,
+        timestamp: new Date().toISOString()
+      });
+      // Also broadcast to testnet room
+      wsManager.broadcastToRoom('testnet', {
+        type: 'NEW_TRADE',
+        data,
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    this.on('trade:volume_bot', (data) => {
+      log.debug('Emitting volume bot trade event');
+      wsManager.broadcastToRoom(`token:${data.tokenMint}`, {
+        type: 'VOLUME_BOT_TRADE',
+        data,
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    // Price Update Events
+    this.on('price:update', (data) => {
+      wsManager.broadcastToRoom(`token:${data.tokenMint}`, {
+        type: 'PRICE_UPDATE',
+        data,
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    // Candle Update Events
+    this.on('candle:update', (data) => {
+      wsManager.broadcastToRoom(`token:${data.tokenMint}`, {
+        type: 'CANDLE_UPDATE',
+        data,
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    // Volume Bot Session Events
+    this.on('volumeBot:started', (data) => {
+      log.debug('Emitting volume bot started event');
+      wsManager.broadcastToRoom(`token:${data.tokenMint}`, {
+        type: 'VOLUME_BOT_STARTED',
+        data,
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    this.on('volumeBot:stopped', (data) => {
+      log.debug('Emitting volume bot stopped event');
+      wsManager.broadcastToRoom(`token:${data.tokenMint}`, {
+        type: 'VOLUME_BOT_STOPPED',
+        data,
+        timestamp: new Date().toISOString()
+      });
+    });
+
     // System Events
     this.on('system:maintenance', (data) => {
       wsManager.broadcast({
@@ -285,10 +382,73 @@ class WSEventEmitter extends EventEmitter {
    * Emit maintenance mode
    */
   emitMaintenanceMode(enabled, message = null) {
-    this.emit('system:maintenance', { 
-      enabled, 
-      message: message || 'System is under maintenance' 
+    this.emit('system:maintenance', {
+      enabled,
+      message: message || 'System is under maintenance'
     });
+  }
+
+  /**
+   * Emit token created event
+   */
+  emitTokenCreated(tokenData) {
+    this.emit('token:created', tokenData);
+  }
+
+  /**
+   * Emit token liquidity added event
+   */
+  emitTokenLiquidityAdded(tokenMint, liquidityData) {
+    this.emit('token:liquidity_added', { tokenMint, ...liquidityData });
+  }
+
+  /**
+   * Emit token status changed event
+   */
+  emitTokenStatusChanged(tokenMint, oldStatus, newStatus) {
+    this.emit('token:status_changed', { tokenMint, oldStatus, newStatus });
+  }
+
+  /**
+   * Emit new trade event
+   */
+  emitNewTrade(tradeData) {
+    this.emit('trade:new', tradeData);
+  }
+
+  /**
+   * Emit volume bot trade event
+   */
+  emitVolumeBotTrade(tradeData) {
+    this.emit('trade:volume_bot', tradeData);
+  }
+
+  /**
+   * Emit price update event
+   */
+  emitPriceUpdate(tokenMint, price, priceChange24h) {
+    this.emit('price:update', { tokenMint, price, priceChange24h });
+  }
+
+  /**
+   * Emit candle update event
+   */
+  emitCandleUpdate(tokenMint, candle) {
+    this.emit('candle:update', { tokenMint, candle });
+  }
+
+  /**
+   * Emit volume bot started event
+   */
+  emitVolumeBotStarted(tokenMint, sessionData) {
+    this.emit('volumeBot:started', { tokenMint, ...sessionData });
+  }
+
+  /**
+   * Emit volume bot stopped event
+   */
+  emitVolumeBotStopped(tokenMint, sessionData) {
+    this.emit('volumeBot:stopped', { tokenMint, ...sessionData });
   }
 
   /**

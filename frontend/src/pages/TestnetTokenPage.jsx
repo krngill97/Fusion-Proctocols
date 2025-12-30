@@ -10,6 +10,7 @@ import TestnetTradingPanel from '../components/testnet/TestnetTradingPanel';
 import TestnetRecentTrades from '../components/testnet/TestnetRecentTrades';
 import TestnetBondingCurve from '../components/testnet/TestnetBondingCurve';
 import VolumeSimulator from '../components/testnet/VolumeSimulator';
+import PriceChart from '../components/charts/PriceChart';
 import { testnetTokenApi } from '../services/api';
 import toast from 'react-hot-toast';
 
@@ -169,6 +170,9 @@ const TestnetTokenPage = () => {
           </div>
         </div>
       </Card>
+
+      {/* Price Chart */}
+      <PriceChart tokenMint={mint} height={500} />
 
       {/* Tabs */}
       <div className="flex gap-2">

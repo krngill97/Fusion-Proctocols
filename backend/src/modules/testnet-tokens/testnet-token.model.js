@@ -179,13 +179,81 @@ const TestnetTokenSchema = new Schema({
   // Status
   status: {
     type: String,
-    enum: ['active', 'graduated', 'inactive'],
-    default: 'active',
+    enum: ['CREATED', 'LIQUIDITY_ADDING', 'LIQUIDITY_ADDED', 'TRADABLE', 'VOLUME_BOT_ACTIVE', 'PAUSED', 'INACTIVE', 'active', 'graduated', 'inactive'], // Keep old values for backwards compatibility
+    default: 'CREATED',
     index: true
   },
   isLaunched: {
     type: Boolean,
     default: true
+  },
+
+  // Lifecycle tracking
+  lifecycle: {
+    createdAt: {
+      type: Date,
+      default: Date.now
+    },
+    liquidityAddedAt: {
+      type: Date,
+      default: null
+    },
+    tradingStartedAt: {
+      type: Date,
+      default: null
+    },
+    volumeBotStartedAt: {
+      type: Date,
+      default: null
+    },
+
+    // Pool information
+    poolAddress: {
+      type: String,
+      default: null
+    },
+    poolId: {
+      type: String,
+      default: null
+    },
+
+    // Liquidity tracking
+    initialLiquiditySOL: {
+      type: Number,
+      default: 0
+    },
+    initialLiquidityTokens: {
+      type: Number,
+      default: 0
+    },
+    currentLiquiditySOL: {
+      type: Number,
+      default: 0
+    },
+    currentLiquidityTokens: {
+      type: Number,
+      default: 0
+    },
+
+    // Trading statistics
+    tradingStats: {
+      totalTrades: {
+        type: Number,
+        default: 0
+      },
+      totalVolume: {
+        type: Number,
+        default: 0
+      },
+      buyCount: {
+        type: Number,
+        default: 0
+      },
+      sellCount: {
+        type: Number,
+        default: 0
+      }
+    }
   },
 
   // Network
@@ -343,6 +411,87 @@ TestnetTokenSchema.methods.addVolume = function(amount) {
   this.volume24h += amount;
   this.volumeTotal += amount;
   this.transactions += 1;
+  return this;
+};
+
+/**
+ * Transition token to LIQUIDITY_ADDED status
+ * @param {Object} poolData - Pool creation data
+ * @param {string} poolData.poolAddress - Raydium pool address
+ * @param {string} poolData.poolId - Pool ID
+ * @param {number} poolData.solAmount - Initial SOL liquidity
+ * @param {number} poolData.tokenAmount - Initial token liquidity
+ */
+TestnetTokenSchema.methods.transitionToLiquidityAdded = async function(poolData) {
+  this.status = 'LIQUIDITY_ADDED';
+  this.lifecycle.liquidityAddedAt = new Date();
+  this.lifecycle.poolAddress = poolData.poolAddress;
+  this.lifecycle.poolId = poolData.poolId;
+  this.lifecycle.initialLiquiditySOL = poolData.solAmount;
+  this.lifecycle.initialLiquidityTokens = poolData.tokenAmount;
+  this.lifecycle.currentLiquiditySOL = poolData.solAmount;
+  this.lifecycle.currentLiquidityTokens = poolData.tokenAmount;
+  return this.save();
+};
+
+/**
+ * Transition token to TRADABLE status
+ */
+TestnetTokenSchema.methods.transitionToTradable = async function() {
+  this.status = 'TRADABLE';
+  this.lifecycle.tradingStartedAt = new Date();
+  return this.save();
+};
+
+/**
+ * Transition token to VOLUME_BOT_ACTIVE status
+ */
+TestnetTokenSchema.methods.transitionToVolumeBotActive = async function() {
+  this.status = 'VOLUME_BOT_ACTIVE';
+  this.lifecycle.volumeBotStartedAt = new Date();
+  return this.save();
+};
+
+/**
+ * Transition token back to TRADABLE status (from VOLUME_BOT_ACTIVE)
+ */
+TestnetTokenSchema.methods.transitionToTradableFromBot = async function() {
+  this.status = 'TRADABLE';
+  // Don't reset volumeBotStartedAt - keep it for history
+  return this.save();
+};
+
+/**
+ * Update liquidity amounts
+ * @param {number} solAmount - Current SOL in pool
+ * @param {number} tokenAmount - Current tokens in pool
+ */
+TestnetTokenSchema.methods.updateLiquidity = function(solAmount, tokenAmount) {
+  this.lifecycle.currentLiquiditySOL = solAmount;
+  this.lifecycle.currentLiquidityTokens = tokenAmount;
+  return this;
+};
+
+/**
+ * Record a trade and update trading stats
+ * @param {string} type - 'buy' or 'sell'
+ * @param {number} volume - SOL volume of the trade
+ */
+TestnetTokenSchema.methods.recordTrade = function(type, volume) {
+  this.lifecycle.tradingStats.totalTrades += 1;
+  this.lifecycle.tradingStats.totalVolume += volume;
+
+  if (type === 'buy') {
+    this.lifecycle.tradingStats.buyCount += 1;
+  } else if (type === 'sell') {
+    this.lifecycle.tradingStats.sellCount += 1;
+  }
+
+  // Also update overall volume stats
+  this.volume24h += volume;
+  this.volumeTotal += volume;
+  this.transactions += 1;
+
   return this;
 };
 

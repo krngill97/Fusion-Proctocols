@@ -25,7 +25,11 @@
       "Bash(ping:*)",
       "Bash(cmd //c taskkill //PID 17340 //F)",
       "Bash(cmd //c \"cd /d C:\\\\Users\\\\richp\\\\Downloads\\\\fusion-pro-design\\\\backend && npm run dev\")",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd Fusion Pro Design - Complete Solana Trading Platform\n\nThis commit includes the complete implementation of Fusion Pro Design, a comprehensive Solana trading platform with the following features:\n\n- Backend API with Express, MongoDB, and WebSocket support\n- Frontend React application with Vite and Tailwind CSS\n- Testnet token creation and trading simulation\n- Volume bot for automated trading\n- Hot wallet and subwallet tracking\n- User wallet monitoring with signal detection\n- Trading engine with Jupiter and Raydium integration\n- Complete documentation and setup guides\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(start:*)",
+      "Bash(node -e:*)"
     ],
     "deny": [],
     "ask": []

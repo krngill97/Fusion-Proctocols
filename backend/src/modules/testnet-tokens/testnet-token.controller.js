@@ -528,6 +528,146 @@ class TestnetTokenController {
       });
     }
   }
+
+  /**
+   * Get tradable tokens (tokens with liquidity added)
+   * GET /api/testnet/tokens/tradable
+   */
+  async getTradableTokens(req, res) {
+    try {
+      const {
+        page = 1,
+        limit = 20,
+        sortBy = 'volume24h',
+        network = 'devnet'
+      } = req.query;
+
+      const skip = (page - 1) * limit;
+
+      // Query for tokens with liquidity
+      const query = {
+        status: {
+          $in: ['LIQUIDITY_ADDED', 'TRADABLE', 'VOLUME_BOT_ACTIVE']
+        },
+        network
+      };
+
+      // Determine sort order
+      const sortOptions = {};
+      switch (sortBy) {
+        case 'liquidity':
+          sortOptions['lifecycle.currentLiquiditySOL'] = -1;
+          break;
+        case 'volume':
+          sortOptions.volume24h = -1;
+          break;
+        case 'created':
+          sortOptions.createdAt = -1;
+          break;
+        case 'price':
+          sortOptions['bondingCurve.currentPrice'] = -1;
+          break;
+        default:
+          sortOptions.volume24h = -1;
+      }
+
+      // Fetch tokens
+      const [tokens, total] = await Promise.all([
+        TestnetToken.find(query)
+          .sort(sortOptions)
+          .skip(skip)
+          .limit(parseInt(limit))
+          .lean(),
+        TestnetToken.countDocuments(query)
+      ]);
+
+      // Enrich tokens with additional data
+      const enrichedTokens = await Promise.all(
+        tokens.map(async (token) => {
+          const holderCount = await TestnetHolder.getActiveCount(token.mint);
+
+          // Calculate current price from reserves if pool exists
+          let currentPrice = token.bondingCurve?.currentPrice || 0;
+          if (token.lifecycle?.currentLiquiditySOL && token.lifecycle?.currentLiquidityTokens) {
+            currentPrice = token.lifecycle.currentLiquiditySOL / token.lifecycle.currentLiquidityTokens;
+          }
+
+          return {
+            mint: token.mint,
+            name: token.name,
+            symbol: token.symbol,
+            description: token.description,
+            imageUrl: token.imageUrl,
+            status: token.status,
+
+            // Lifecycle data
+            lifecycle: {
+              poolAddress: token.lifecycle?.poolAddress || null,
+              poolId: token.lifecycle?.poolId || null,
+              liquidityAddedAt: token.lifecycle?.liquidityAddedAt || null,
+              tradingStartedAt: token.lifecycle?.tradingStartedAt || null,
+              volumeBotStartedAt: token.lifecycle?.volumeBotStartedAt || null
+            },
+
+            // Price data
+            price: currentPrice,
+            priceChange24h: token.priceChange24h || 0,
+
+            // Liquidity data
+            liquidity: {
+              sol: token.lifecycle?.currentLiquiditySOL || 0,
+              tokens: token.lifecycle?.currentLiquidityTokens || 0,
+              usd: (token.lifecycle?.currentLiquiditySOL || 0) * 100 // Simplified USD calc
+            },
+
+            // Volume data
+            volume24h: token.volume24h || 0,
+            volumeTotal: token.volumeTotal || 0,
+
+            // Trading stats
+            tradingStats: token.lifecycle?.tradingStats || {
+              totalTrades: 0,
+              totalVolume: 0,
+              buyCount: 0,
+              sellCount: 0
+            },
+
+            // Additional stats
+            holders: holderCount,
+            transactions: token.transactions || 0,
+            marketCap: token.marketCap || 0,
+
+            // Links
+            solscanUrl: `https://solscan.io/token/${token.mint}?cluster=${network}`,
+
+            // Metadata
+            creator: token.creator,
+            createdAt: token.createdAt,
+            network: token.network
+          };
+        })
+      );
+
+      res.json({
+        success: true,
+        tokens: enrichedTokens,
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: Math.ceil(total / limit)
+        }
+      });
+
+    } catch (error) {
+      console.error('Get tradable tokens error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch tradable tokens',
+        error: error.message
+      });
+    }
+  }
 }
 
 export default new TestnetTokenController();
