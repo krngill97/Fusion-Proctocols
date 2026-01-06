@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { createChart } from 'lightweight-charts';
-import api from '../../services/api';
-import { Spinner } from '../common';
 
 const TIMEFRAMES = [
   { value: '1m', label: '1m' },
@@ -9,7 +7,7 @@ const TIMEFRAMES = [
   { value: '15m', label: '15m' },
   { value: '1h', label: '1h' },
   { value: '4h', label: '4h' },
-  { value: '1d', label: '1D' },
+  { value: '1d', label: '1d' },
 ];
 
 export default function PriceChart({ tokenMint, height = 500 }) {
@@ -18,7 +16,7 @@ export default function PriceChart({ tokenMint, height = 500 }) {
   const candlestickSeriesRef = useRef(null);
   const volumeSeriesRef = useRef(null);
 
-  const [timeframe, setTimeframe] = useState('5m');
+  const [timeframe, setTimeframe] = useState('1m');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [latestPrice, setLatestPrice] = useState(null);
@@ -28,54 +26,81 @@ export default function PriceChart({ tokenMint, height = 500 }) {
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    // Create chart
+    // Create chart with DEXScreener-style dark theme
     const chart = createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth,
       height: height,
       layout: {
-        background: { color: '#1e293b' },
-        textColor: '#cbd5e1',
+        background: { color: '#131722' },
+        textColor: '#d1d4dc',
       },
       grid: {
-        vertLines: { color: '#334155' },
-        horzLines: { color: '#334155' },
+        vertLines: { color: 'rgba(42, 46, 57, 0.6)' },
+        horzLines: { color: 'rgba(42, 46, 57, 0.6)' },
       },
       crosshair: {
         mode: 1,
+        vertLine: {
+          color: 'rgba(224, 227, 235, 0.1)',
+          width: 1,
+          style: 0,
+          labelBackgroundColor: '#363c4e',
+        },
+        horzLine: {
+          color: 'rgba(224, 227, 235, 0.1)',
+          width: 1,
+          style: 0,
+          labelBackgroundColor: '#363c4e',
+        },
       },
       rightPriceScale: {
-        borderColor: '#334155',
+        borderColor: 'rgba(42, 46, 57, 0.6)',
+        scaleMargins: {
+          top: 0.1,
+          bottom: 0.2,
+        },
       },
       timeScale: {
-        borderColor: '#334155',
+        borderColor: 'rgba(42, 46, 57, 0.6)',
         timeVisible: true,
-        secondsVisible: false,
+        secondsVisible: true,
+      },
+      handleScale: {
+        axisPressedMouseMove: {
+          time: true,
+          price: true,
+        },
       },
     });
 
     chartRef.current = chart;
 
-    // Create candlestick series
+    // Create candlestick series with DEXScreener colors
     const candlestickSeries = chart.addCandlestickSeries({
-      upColor: '#22c55e',
-      downColor: '#ef4444',
-      borderUpColor: '#22c55e',
-      borderDownColor: '#ef4444',
-      wickUpColor: '#22c55e',
-      wickDownColor: '#ef4444',
+      upColor: '#26a69a',
+      downColor: '#ef5350',
+      borderUpColor: '#26a69a',
+      borderDownColor: '#ef5350',
+      wickUpColor: '#26a69a',
+      wickDownColor: '#ef5350',
+      priceFormat: {
+        type: 'price',
+        precision: 8,
+        minMove: 0.00000001,
+      },
     });
 
     candlestickSeriesRef.current = candlestickSeries;
 
     // Create volume series
     const volumeSeries = chart.addHistogramSeries({
-      color: '#4f46e5',
+      color: '#26a69a',
       priceFormat: {
         type: 'volume',
       },
       priceScaleId: '',
       scaleMargins: {
-        top: 0.8,
+        top: 0.7,
         bottom: 0,
       },
     });
@@ -110,27 +135,26 @@ export default function PriceChart({ tokenMint, height = 500 }) {
         setLoading(true);
         setError(null);
 
-        const response = await api.get(`/charts/complete/${tokenMint}`, {
-          params: {
-            timeframe,
-            limit: 100,
-          },
-        });
+        console.log('Fetching chart data for:', tokenMint);
+        const response = await fetch(`http://localhost:5001/api/charts/complete/${tokenMint}?timeframe=${timeframe}&limit=100`);
+        console.log('Response status:', response.status);
+        const data = await response.json();
+        console.log('Chart data:', data);
 
-        if (response.data.success) {
-          const { candles, latestPrice, priceChange24h } = response.data;
+        if (data.success) {
+          const { candles, latestPrice, priceChange24h } = data;
 
           // Update candlestick data
           if (candlestickSeriesRef.current && candles.length > 0) {
             candlestickSeriesRef.current.setData(candles);
           }
 
-          // Update volume data
+          // Update volume data with DEXScreener colors
           if (volumeSeriesRef.current && candles.length > 0) {
             const volumeData = candles.map((candle) => ({
               time: candle.time,
               value: candle.volume,
-              color: candle.close >= candle.open ? '#22c55e80' : '#ef444480',
+              color: candle.close >= candle.open ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)',
             }));
             volumeSeriesRef.current.setData(volumeData);
           }
@@ -141,8 +165,10 @@ export default function PriceChart({ tokenMint, height = 500 }) {
           }
 
           // Update latest price and change
-          setLatestPrice(latestPrice);
-          setPriceChange(priceChange24h);
+          if (latestPrice) {
+            setLatestPrice(latestPrice);
+            setPriceChange(priceChange24h);
+          }
         }
       } catch (error) {
         console.error('Error fetching chart data:', error);
@@ -154,8 +180,8 @@ export default function PriceChart({ tokenMint, height = 500 }) {
 
     fetchChartData();
 
-    // Auto-refresh every minute
-    const interval = setInterval(fetchChartData, 60000);
+    // Auto-refresh every 10 seconds
+    const interval = setInterval(fetchChartData, 10000);
 
     return () => clearInterval(interval);
   }, [tokenMint, timeframe]);
@@ -163,10 +189,10 @@ export default function PriceChart({ tokenMint, height = 500 }) {
   if (loading && !chartRef.current) {
     return (
       <div
-        className="bg-slate-800 rounded-lg border border-slate-700 flex items-center justify-center"
+        className="bg-gray-800 rounded-lg border border-gray-700 flex items-center justify-center"
         style={{ height: `${height}px` }}
       >
-        <Spinner size="lg" />
+        <div className="text-white">Loading chart...</div>
       </div>
     );
   }
@@ -174,55 +200,60 @@ export default function PriceChart({ tokenMint, height = 500 }) {
   if (error) {
     return (
       <div
-        className="bg-slate-800 rounded-lg border border-slate-700 flex flex-col items-center justify-center gap-4 p-6"
+        className="bg-gray-800 rounded-lg border border-gray-700 flex flex-col items-center justify-center gap-4 p-6"
         style={{ height: `${height}px` }}
       >
         <div className="text-red-400 text-center">
           <div className="text-lg font-semibold mb-2">Failed to load chart</div>
-          <div className="text-sm text-slate-400">{error}</div>
+          <div className="text-sm text-gray-400">{error}</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+    <div className="rounded-lg overflow-hidden" style={{ backgroundColor: '#131722' }}>
       {/* Header */}
-      <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
+      <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: 'rgba(42, 46, 57, 0.6)' }}>
         <div className="flex items-center gap-4">
           {/* Price Info */}
-          {latestPrice && (
-            <div>
-              <div className="text-2xl font-bold text-white">
-                {latestPrice.price.toFixed(6)} SOL
-              </div>
-              {priceChange && (
-                <div
-                  className={`text-sm ${
-                    priceChange.changePercent >= 0
-                      ? 'text-green-400'
-                      : 'text-red-400'
-                  }`}
-                >
-                  {priceChange.changePercent >= 0 ? '+' : ''}
-                  {priceChange.changePercent.toFixed(2)}% (24h)
-                </div>
-              )}
+          <div>
+            <div className="text-2xl font-bold" style={{ color: '#d1d4dc' }}>
+              {latestPrice ? `$${(latestPrice.price * 100).toFixed(8)}` : 'Loading...'}
             </div>
-          )}
+            {priceChange && (
+              <div
+                className="text-sm font-medium"
+                style={{ color: priceChange.changePercent >= 0 ? '#26a69a' : '#ef5350' }}
+              >
+                {priceChange.changePercent >= 0 ? '▲' : '▼'} {priceChange.changePercent >= 0 ? '+' : ''}
+                {priceChange.changePercent.toFixed(2)}% (24h)
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Timeframe Selector */}
-        <div className="flex items-center gap-1 bg-slate-900 rounded-lg p-1">
+        <div className="flex items-center gap-1 rounded-lg p-1" style={{ backgroundColor: '#1e222d' }}>
           {TIMEFRAMES.map((tf) => (
             <button
               key={tf.value}
               onClick={() => setTimeframe(tf.value)}
-              className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
-                timeframe === tf.value
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
-              }`}
+              className="px-3 py-1.5 text-sm font-medium rounded transition-all duration-200"
+              style={{
+                backgroundColor: timeframe === tf.value ? '#2962ff' : 'transparent',
+                color: timeframe === tf.value ? '#ffffff' : '#787b86',
+              }}
+              onMouseEnter={(e) => {
+                if (timeframe !== tf.value) {
+                  e.currentTarget.style.backgroundColor = 'rgba(42, 46, 57, 0.6)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (timeframe !== tf.value) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
+              }}
             >
               {tf.label}
             </button>
@@ -233,8 +264,8 @@ export default function PriceChart({ tokenMint, height = 500 }) {
       {/* Chart Container */}
       <div className="relative">
         {loading && (
-          <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center z-10">
-            <Spinner size="md" />
+          <div className="absolute inset-0 flex items-center justify-center z-10" style={{ backgroundColor: 'rgba(19, 23, 34, 0.8)' }}>
+            <div style={{ color: '#d1d4dc' }}>Updating chart...</div>
           </div>
         )}
         <div ref={chartContainerRef} />

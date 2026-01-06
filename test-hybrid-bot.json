@@ -1,0 +1,18 @@
+{
+  "tokenMint": "x1dQbtG8ZgWZ94Htu39GmUo7ttGbgJmQx1dQbtG8ZgWZ",
+  "fundingWalletPrivateKey": "[143,229,175,78,248,192,5,4,229,121,150,128,174,233,202,96,79,188,120,185,193,167,53,63,78,16,122,145,165,207,134,179,148,82,191,198,122,128,85,217,161,163,63,144,134,196,61,153,25,237,94,221,73,240,48,78,126,1,48,146,236,74,182,239]",
+  "config": {
+    "startingCapital": 0.05,
+    "walletCount": 5,
+    "tradesPerMinute": 10,
+    "targetVolume": 0.5,
+    "maxLossPercent": 30,
+    "durationMinutes": 10,
+    "buyRatio": 0.55,
+    "minTradeSize": 0.005,
+    "maxTradeSize": 0.01,
+    "slippageBps": 400,
+    "parallelTrades": 2,
+    "enableDynamicSlippage": true
+  }
+}

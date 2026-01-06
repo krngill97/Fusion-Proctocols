@@ -1,0 +1,12 @@
+{
+  "tokenMint": "x1dQbtG8ZgWZ94Htu39GmUo7ttGbgJmQx1dQbtG8ZgWZ",
+  "fundingWalletPrivateKey": "3zjmRsxFWahhJZAkU8k661JPf9E21ipXHEDrZJeDVjdj9cKecwYmSLaN4ezXXCAzkzjfoGi9oSCVKCusWPgrqGrX",
+  "config": {
+    "startingCapital": 1.0,
+    "walletCount": 10,
+    "tradesPerMinute": 15,
+    "targetVolume": 10,
+    "maxLossPercent": 20,
+    "durationMinutes": 10
+  }
+}

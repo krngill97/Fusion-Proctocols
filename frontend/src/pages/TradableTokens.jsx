@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { BarChart3, ExternalLink } from 'lucide-react';
 import { useNetwork } from '../context/NetworkContext';
 import api from '../services/api';
 import { Card, Button, Spinner, EmptyState, Badge } from '../components/common';
@@ -276,10 +277,21 @@ function TokenCard({ token, onClick }) {
             className="flex-1"
             onClick={(e) => {
               e.stopPropagation();
+              navigate(`/chart/${token.mint}`);
+            }}
+          >
+            <BarChart3 size={14} />
+            View Chart
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
               window.open(token.solscanUrl, '_blank');
             }}
           >
-            View on Solscan
+            <ExternalLink size={14} />
           </Button>
         </div>
       </div>

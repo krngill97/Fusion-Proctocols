@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import {
   TestTube, Zap, Plus, Rocket, Sparkles,
-  TrendingUp, Activity, Search, RefreshCw
+  TrendingUp, Activity, Search, RefreshCw, BarChart3
 } from 'lucide-react';
 import { Button, Card, Spinner, Badge } from '../components/common';
 import { useNetwork } from '../context/NetworkContext';
@@ -485,11 +485,23 @@ const TestnetLab = () => {
                         <p className="text-2xs text-dark-500">24h</p>
                       </div>
 
-                      {/* Trade Button */}
-                      <Button size="sm" variant="primary">
-                        <TrendingUp size={14} />
-                        Trade
-                      </Button>
+                      {/* Action Buttons */}
+                      <div className="flex gap-2">
+                        <Link
+                          to={`/chart/${token.mint}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="no-underline"
+                        >
+                          <Button size="sm" variant="secondary">
+                            <BarChart3 size={14} />
+                            Chart
+                          </Button>
+                        </Link>
+                        <Button size="sm" variant="primary">
+                          <TrendingUp size={14} />
+                          Trade
+                        </Button>
+                      </div>
                     </div>
                   </Card>
                 </Link>

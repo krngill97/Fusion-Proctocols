@@ -1,0 +1,18 @@
+{
+  "tokenMint": "REPLACE_WITH_YOUR_TOKEN_MINT_ADDRESS",
+  "fundingWalletPrivateKey": "REPLACE_WITH_YOUR_PRIVATE_KEY",
+  "config": {
+    "startingCapital": 1.0,
+    "walletCount": 25,
+    "tradesPerMinute": 30,
+    "targetVolume": 25,
+    "maxLossPercent": 30,
+    "durationMinutes": 60,
+    "buyRatio": 0.6,
+    "minTradeSize": 0.015,
+    "maxTradeSize": 0.06,
+    "slippageBps": 400,
+    "parallelTrades": 5,
+    "enableDynamicSlippage": true
+  }
+}

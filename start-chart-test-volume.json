@@ -1,0 +1,13 @@
+{
+  "tokenMint": "3E3bqNKkNxwr2deGtGtuKk4kroWPdVop3E3bqNKkNxwr",
+  "creator": "4rtJBeBxCAQfvzqKb3hs2sKfgPsbfivr85j3ZhM6Yuzy",
+  "config": {
+    "budget": 5,
+    "duration": 10,
+    "tradeInterval": 2,
+    "minTradeSize": 0.005,
+    "maxTradeSize": 0.03,
+    "walletCount": 15,
+    "buyRatio": 0.65
+  }
+}

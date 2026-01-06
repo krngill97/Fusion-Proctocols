@@ -33,7 +33,7 @@ class WebSocketManager {
       return;
     }
 
-    this.wss = new WebSocketServer({ 
+    this.wss = new WebSocketServer({
       server: httpServer,
       path: '/ws',
       clientTracking: true
@@ -59,12 +59,12 @@ class WebSocketManager {
     const clientId = this.generateClientId();
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
-    // Rate limiting
-    if (!wsRateLimiter(clientIp)) {
-      ws.close(4029, 'Too many connections');
-      log.warn(`Rate limited WebSocket connection from ${clientIp}`);
-      return;
-    }
+    // Rate limiting - disabled for development
+    // if (!wsRateLimiter(clientIp)) {
+    //   ws.close(4029, 'Too many connections');
+    //   log.warn(`Rate limited WebSocket connection from ${clientIp}`);
+    //   return;
+    // }
 
     // Initialize client data
     const clientData = {

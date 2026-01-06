@@ -157,19 +157,33 @@ class DevnetVolumeBotService {
     try {
       console.log(`[Devnet Volume Bot] Initializing wallets for session ${sessionId}...`);
 
-      // Step 1: Airdrop SOL to maker wallets
+      // Step 1: Transfer SOL from funding wallet to maker wallets
+      console.log(`[Devnet Volume Bot] Funding ${session.makerWallets.length} wallets from your wallet...`);
+
       for (let i = 0; i < session.makerWallets.length; i++) {
         const wallet = session.makerWallets[i];
         try {
-          console.log(`[Devnet Volume Bot] Airdropping SOL to wallet ${i + 1}/${session.makerWallets.length}...`);
-          const airdropSignature = await this.connection.requestAirdrop(
-            wallet.keypair.publicKey,
-            0.1 * LAMPORTS_PER_SOL
+          console.log(`[Devnet Volume Bot] Sending 0.1 SOL to wallet ${i + 1}/${session.makerWallets.length}...`);
+
+          const transaction = new Transaction().add(
+            SystemProgram.transfer({
+              fromPubkey: fundingKeypair.publicKey,
+              toPubkey: wallet.keypair.publicKey,
+              lamports: 0.1 * LAMPORTS_PER_SOL,
+            })
           );
-          await this.connection.confirmTransaction(airdropSignature);
-          await this.sleep(1000); // Rate limit
+
+          const signature = await sendAndConfirmTransaction(
+            this.connection,
+            transaction,
+            [fundingKeypair],
+            { commitment: 'confirmed' }
+          );
+
+          console.log(`[Devnet Volume Bot] ✅ Funded wallet ${i + 1}: ${signature}`);
+          await this.sleep(500); // Small delay between transactions
         } catch (error) {
-          console.error(`[Devnet Volume Bot] Airdrop failed for wallet ${i}:`, error.message);
+          console.error(`[Devnet Volume Bot] Transfer failed for wallet ${i}:`, error.message);
         }
       }
 

@@ -17,7 +17,11 @@ import {
   ChevronDown,
   Globe,
   Zap,
-  Rocket
+  Rocket,
+  Repeat,
+  Coins,
+  List,
+  BarChart3
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useWebSocket } from '../../context/WebSocketContext';
@@ -47,6 +51,9 @@ const Layout = () => {
     { name: 'My Wallets', href: '/user-wallets', icon: Users },
     { name: 'Trading', href: '/trading', icon: TrendingUp },
     { name: 'Volume Bot', href: '/volume-bot', icon: Bot },
+    { name: 'Advanced Bots', href: '/advanced-bots', icon: Repeat, badge: 'NEW' },
+    { name: 'Tradable Tokens', href: '/tokens', icon: Coins },
+    { name: 'Token Explorer', href: '/explorer', icon: List },
     { name: 'Testnet Lab', href: '/testnet-lab', icon: TestTube },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
@@ -147,13 +154,22 @@ const Layout = () => {
                   to={item.href}
                   onClick={() => setSidebarOpen(false)}
                   className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors ${
-                    isActive 
-                      ? 'bg-primary-500/10 text-primary-400 border-l-2 border-primary-500 -ml-0.5 pl-2.5' 
+                    isActive
+                      ? 'bg-primary-500/10 text-primary-400 border-l-2 border-primary-500 -ml-0.5 pl-2.5'
                       : 'text-dark-400 hover:text-white hover:bg-dark-800'
                   }`}
                 >
                   <item.icon size={16} />
-                  <span>{item.name}</span>
+                  <span className="flex-1">{item.name}</span>
+                  {item.badge && (
+                    <span className={`px-1.5 py-0.5 text-2xs font-semibold rounded ${
+                      item.badge === 'NEW' ? 'bg-accent-purple/20 text-accent-purple' :
+                      item.badge === 'REAL' ? 'bg-success/20 text-success' :
+                      'bg-primary-500/20 text-primary-400'
+                    }`}>
+                      {item.badge}
+                    </span>
+                  )}
                 </NavLink>
               );
             })}

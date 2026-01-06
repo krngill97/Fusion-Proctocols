@@ -5,7 +5,7 @@ const DEMO_MODE = true;
 
 // Create axios instance
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: 'http://localhost:5001/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -164,11 +164,23 @@ export const settingsApi = {
 };
 
 // ==========================================
-// Testnet Trading Simulator API
+// Real Solana Devnet API (Real Blockchain)
+// ==========================================
+
+export const realTokenApi = {
+  // Real token creation (on Solana blockchain)
+  create: (data) => api.post('/solana/tokens/create', data),
+  getMetadata: (mint, network = 'devnet') => api.get(`/solana/tokens/${mint}/metadata`, { params: { network } }),
+  getBalance: (mint, wallet, network = 'devnet') => api.get(`/solana/tokens/${mint}/balance/${wallet}`, { params: { network } }),
+  getHolders: (mint, network = 'devnet') => api.get(`/solana/tokens/${mint}/holders`, { params: { network } }),
+};
+
+// ==========================================
+// Testnet Trading Simulator API (Database Only)
 // ==========================================
 
 export const testnetTokenApi = {
-  // Token management
+  // Token management (simulated, MongoDB only)
   create: (data) => api.post('/testnet/tokens', data),
   getAll: (params) => api.get('/testnet/tokens', { params }),
   getById: (mint) => api.get(`/testnet/tokens/${mint}`),

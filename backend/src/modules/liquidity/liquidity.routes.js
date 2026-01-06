@@ -43,4 +43,25 @@ router.post('/add', liquidityController.addLiquidity.bind(liquidityController));
  */
 router.get('/creator/:creatorAddress', liquidityController.getPoolsByCreator.bind(liquidityController));
 
+/**
+ * @route   POST /api/liquidity/create-raydium-pool
+ * @desc    Create a REAL Raydium pool on-chain (requires ~1.5 SOL)
+ * @access  Public (should add auth in production)
+ */
+router.post('/create-raydium-pool', liquidityController.createRaydiumPool.bind(liquidityController));
+
+/**
+ * @route   POST /api/liquidity/create-simple-pool
+ * @desc    Create a simple pool with database tracking only (for testing with low SOL)
+ * @access  Public (should add auth in production)
+ */
+router.post('/create-simple-pool', liquidityController.createSimplePool.bind(liquidityController));
+
+/**
+ * @route   GET /api/liquidity/check-jupiter/:tokenMint
+ * @desc    Check if token has real liquidity on Jupiter DEX
+ * @access  Public
+ */
+router.get('/check-jupiter/:tokenMint', liquidityController.checkJupiterLiquidity.bind(liquidityController));
+
 export default router;

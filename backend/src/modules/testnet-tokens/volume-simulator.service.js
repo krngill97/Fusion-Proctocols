@@ -123,8 +123,8 @@ class VolumeSimulatorService {
         walletBalances.set(w, { sol: budget / walletCount, tokens: 0 });
       });
 
-      // Main trading loop
-      while (Date.now() < endTime && remainingBudget > minTradeSize) {
+      // Main trading loop - RECYCLING STRATEGY
+      while (Date.now() < endTime) {
         // Check if session was stopped
         const currentSession = await TestnetVolumeSession.findById(sessionId);
         if (!currentSession || currentSession.status !== 'running') {
@@ -132,22 +132,45 @@ class VolumeSimulatorService {
         }
 
         try {
+          // Find wallets with SOL and tokens
+          const walletsWithSOL = wallets.filter(w => walletBalances.get(w).sol >= minTradeSize);
+          const walletsWithTokens = wallets.filter(w => walletBalances.get(w).tokens > 0);
+
+          // If no wallets can trade, break
+          if (walletsWithSOL.length === 0 && walletsWithTokens.length === 0) {
+            console.log('No wallets can trade - ending session');
+            break;
+          }
+
           // Determine trade type based on ratio
-          const isBuy = Math.random() < buyRatio;
+          let isBuy = Math.random() < buyRatio;
 
-          // Select random wallet
-          const walletIndex = tradeIndex % wallets.length;
-          const wallet = wallets[walletIndex];
+          // Smart selection: if no wallets have tokens, must buy; if no wallets have SOL, must sell
+          if (walletsWithTokens.length === 0 && walletsWithSOL.length > 0) {
+            isBuy = true; // Force buy
+          } else if (walletsWithSOL.length === 0 && walletsWithTokens.length > 0) {
+            isBuy = false; // Force sell
+          }
+
+          // Select random wallet based on trade type
+          const wallet = isBuy
+            ? walletsWithSOL[Math.floor(Math.random() * walletsWithSOL.length)]
+            : walletsWithTokens[Math.floor(Math.random() * walletsWithTokens.length)];
+
+          if (!wallet) {
+            tradeIndex++;
+            await sleep(tradeInterval * 1000);
+            continue;
+          }
+
           const walletBal = walletBalances.get(wallet);
-
-          // Determine trade size
-          let tradeSize = randomInRange(minTradeSize, maxTradeSize);
-          tradeSize = Math.min(tradeSize, remainingBudget);
-
           let trade;
 
-          if (isBuy && walletBal.sol >= tradeSize) {
+          if (isBuy && walletBal.sol >= minTradeSize) {
             // Execute buy
+            let tradeSize = randomInRange(minTradeSize, maxTradeSize);
+            tradeSize = Math.min(tradeSize, walletBal.sol); // Don't exceed wallet balance
+
             const result = await TestnetTradeService.executeTrade({
               tokenMint: session.tokenMint,
               wallet,
@@ -163,12 +186,10 @@ class VolumeSimulatorService {
             walletBal.sol -= tradeSize;
             walletBal.tokens += trade.tokenAmount;
 
-            // Update remaining budget
-            remainingBudget -= tradeSize;
-
           } else if (!isBuy && walletBal.tokens > 0) {
-            // Execute sell - sell some portion of tokens
-            const sellAmount = walletBal.tokens * randomInRange(0.1, 0.5);
+            // Execute sell - sell portion of tokens (20-80%)
+            const sellPercentage = randomInRange(0.2, 0.8);
+            const sellAmount = walletBal.tokens * sellPercentage;
 
             if (sellAmount > 0) {
               const result = await TestnetTradeService.executeTrade({
@@ -182,27 +203,12 @@ class VolumeSimulatorService {
 
               trade = result.trade;
 
-              // Update wallet balances
+              // Update wallet balances - RECYCLE SOL BACK
               walletBal.tokens -= sellAmount;
               walletBal.sol += trade.solAmount - trade.fees.totalFee;
-            }
-          } else {
-            // Can't execute this trade type, try the opposite
-            if (!isBuy && walletBal.sol >= tradeSize) {
-              // Do a buy instead
-              const result = await TestnetTradeService.executeTrade({
-                tokenMint: session.tokenMint,
-                wallet,
-                type: 'buy',
-                amount: tradeSize,
-                isVolumeBot: true,
-                volumeSessionId: sessionId
-              });
 
-              trade = result.trade;
-              walletBal.sol -= tradeSize;
-              walletBal.tokens += trade.tokenAmount;
-              remainingBudget -= tradeSize;
+              // Add recycled SOL back to budget pool
+              remainingBudget += trade.solAmount - trade.fees.totalFee;
             }
           }
 

@@ -60,9 +60,9 @@ app.use(helmet({
 
 // CORS configuration
 app.use(cors({
-  origin: NODE_ENV === 'production' 
-    ? [FRONTEND_URL] 
-    : ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
+  origin: NODE_ENV === 'production'
+    ? [FRONTEND_URL]
+    : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176', 'http://localhost:5177', 'http://localhost:3000', 'http://127.0.0.1:5173'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -168,8 +168,12 @@ import volumeRoutes from './modules/volume-bot/volume.routes.js';
 import testnetRoutes from './modules/testnet-tokens/testnet.routes.js';
 import solanaTokenRoutes from './modules/testnet-tokens/solana-token.routes.js';
 import devnetVolumeRoutes from './routes/devnet-volume.routes.js';
+import enhancedVolumeRoutes from './routes/enhanced-volume.routes.js';
+import recyclingVolumeRoutes from './routes/recycling-volume.routes.js';
+import hybridRecyclingVolumeRoutes from './routes/hybrid-recycling-volume.routes.js';
 import liquidityRoutes from './modules/liquidity/liquidity.routes.js';
 import chartRoutes from './modules/charts/chart.routes.js';
+import solscanRoutes from './routes/solscan.routes.js';
 
 // Import WebSocket
 import { wsManager } from './websocket/index.js';
@@ -204,11 +208,23 @@ app.use('/api/solana', solanaTokenRoutes);
 // Devnet volume bot routes
 app.use('/api/devnet-volume', devnetVolumeRoutes);
 
+// Enhanced volume bot routes (with liquidity creation)
+app.use('/api/enhanced-volume', enhancedVolumeRoutes);
+
+// Recycling volume bot routes (buy/sell cycling for max volume)
+app.use('/api/recycling-volume', recyclingVolumeRoutes);
+
+// Hybrid recycling volume bot routes (real Jupiter swaps + recycling strategy)
+app.use('/api/hybrid-recycling-volume', hybridRecyclingVolumeRoutes);
+
 // Liquidity pool routes
 app.use('/api/liquidity', liquidityRoutes);
 
 // Chart data routes
 app.use('/api/charts', chartRoutes);
+
+// Solscan API routes (Real blockchain data)
+app.use('/api/solscan', solscanRoutes);
 
 // ------------------------------------
 // Error Handling

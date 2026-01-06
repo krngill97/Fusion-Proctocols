@@ -216,6 +216,74 @@ class ChartController {
   }
 
   /**
+   * Get 24h statistics for a token (for live price header)
+   * GET /api/charts/stats/:tokenMint
+   */
+  async get24hStats(req, res) {
+    try {
+      const { tokenMint } = req.params;
+
+      if (!tokenMint) {
+        return res.status(400).json({
+          success: false,
+          message: 'Token mint address is required'
+        });
+      }
+
+      const stats = await chartService.get24hStats(tokenMint);
+
+      res.json({
+        success: true,
+        tokenMint,
+        ...stats
+      });
+
+    } catch (error) {
+      console.error('[Chart Controller] Get 24h stats error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch 24h statistics',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Get recent trades for a token (for transaction feed)
+   * GET /api/charts/trades/:tokenMint
+   */
+  async getRecentTrades(req, res) {
+    try {
+      const { tokenMint } = req.params;
+      const limit = parseInt(req.query.limit) || 100;
+
+      if (!tokenMint) {
+        return res.status(400).json({
+          success: false,
+          message: 'Token mint address is required'
+        });
+      }
+
+      const trades = await chartService.getRecentTrades(tokenMint, limit);
+
+      res.json({
+        success: true,
+        tokenMint,
+        trades,
+        count: trades.length
+      });
+
+    } catch (error) {
+      console.error('[Chart Controller] Get recent trades error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch recent trades',
+        error: error.message
+      });
+    }
+  }
+
+  /**
    * Get complete chart data (OHLCV + latest price + volume)
    * GET /api/charts/complete/:tokenMint
    */

@@ -32,15 +32,20 @@ class ChartService {
       const timeframeMs = TIMEFRAMES[timeframe];
       const startTime = new Date(Date.now() - timeframeMs * limit);
 
-      // Fetch all confirmed trades for the token within the time range
+      console.log('[Chart Service] Fetching trades for', tokenMint);
+      console.log('[Chart Service] Start time:', startTime);
+      console.log('[Chart Service] Timeframe:', timeframe, timeframeMs, 'ms');
+
+      // Fetch ALL trades for the token (remove time filter for now to debug)
       const trades = await TestnetTrade.find({
         tokenMint,
-        status: 'confirmed',
-        timestamp: { $gte: startTime }
       })
       .select('price solAmount timestamp type')
       .sort({ timestamp: 1 })
+      .limit(1000)
       .lean();
+
+      console.log('[Chart Service] Found', trades.length, 'trades');
 
       if (!trades || trades.length === 0) {
         return [];
@@ -48,6 +53,8 @@ class ChartService {
 
       // Group trades into candles by timeframe
       const candles = this.aggregateTradesIntoCandles(trades, timeframeMs, limit);
+
+      console.log('[Chart Service] Generated', candles.length, 'candles');
 
       return candles;
 
@@ -297,6 +304,104 @@ class ChartService {
 
     } catch (error) {
       console.error('[Chart Service] Error calculating volume:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get 24h statistics for a token (for live price header)
+   * @param {string} tokenMint - Token mint address
+   * @returns {Promise<Object>} 24h stats
+   */
+  async get24hStats(tokenMint) {
+    try {
+      const now = Date.now();
+      const oneDayAgo = new Date(now - 24 * 60 * 60 * 1000);
+
+      // Get all trades in last 24h
+      const trades = await TestnetTrade.find({
+        tokenMint,
+        status: 'confirmed',
+        timestamp: { $gte: oneDayAgo }
+      })
+      .sort({ timestamp: -1 })
+      .select('price solAmount amount type timestamp')
+      .lean();
+
+      if (trades.length === 0) {
+        return {
+          currentPrice: 0,
+          priceChange24h: 0,
+          priceChangePercent24h: 0,
+          high24h: 0,
+          low24h: 0,
+          volumeSOL24h: 0,
+          volumeTokens24h: 0,
+          transactions24h: 0
+        };
+      }
+
+      // Current price (latest trade)
+      const currentPrice = trades[0].price || 0;
+
+      // 24h price change
+      const oldestPrice = trades[trades.length - 1].price || currentPrice;
+      const priceChange24h = currentPrice - oldestPrice;
+      const priceChangePercent24h = oldestPrice !== 0
+        ? (priceChange24h / oldestPrice) * 100
+        : 0;
+
+      // High and low
+      let high24h = currentPrice;
+      let low24h = currentPrice;
+      let volumeSOL24h = 0;
+      let volumeTokens24h = 0;
+
+      trades.forEach(trade => {
+        if (trade.price > high24h) high24h = trade.price;
+        if (trade.price < low24h) low24h = trade.price;
+        volumeSOL24h += trade.solAmount || 0;
+        volumeTokens24h += trade.amount || 0;
+      });
+
+      return {
+        currentPrice,
+        priceChange24h,
+        priceChangePercent24h,
+        high24h,
+        low24h,
+        volumeSOL24h,
+        volumeTokens24h,
+        transactions24h: trades.length
+      };
+
+    } catch (error) {
+      console.error('[Chart Service] Error getting 24h stats:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get recent trades for a token (for transaction feed)
+   * @param {string} tokenMint - Token mint address
+   * @param {number} limit - Number of trades to return
+   * @returns {Promise<Array>} Recent trades
+   */
+  async getRecentTrades(tokenMint, limit = 100) {
+    try {
+      const trades = await TestnetTrade.find({
+        tokenMint,
+        status: 'confirmed'
+      })
+      .sort({ timestamp: -1 })
+      .limit(limit)
+      .select('type price amount solAmount wallet walletAddress signature timestamp createdAt')
+      .lean();
+
+      return trades;
+
+    } catch (error) {
+      console.error('[Chart Service] Error getting recent trades:', error);
       throw error;
     }
   }

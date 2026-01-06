@@ -25,7 +25,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:5001',
         changeOrigin: true,
         // Don't error if backend is not running
         configure: (proxy) => {
@@ -35,7 +35,7 @@ export default defineConfig({
         },
       },
       '/ws': {
-        target: 'ws://localhost:5000',
+        target: 'ws://localhost:5001',
         ws: true,
         // Don't error if backend WebSocket is not running
         configure: (proxy) => {

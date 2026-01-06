@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useWallet } from '@solana/wallet-adapter-react';
 import {
   ArrowLeft, Copy, ExternalLink, TrendingUp, Activity,
-  Users, DollarSign, RefreshCw
+  Users, DollarSign, RefreshCw, BarChart3
 } from 'lucide-react';
 import { Button, Card, Spinner, Badge } from '../components/common';
 import TestnetTradingPanel from '../components/testnet/TestnetTradingPanel';
@@ -132,10 +132,18 @@ const TestnetTokenPage = () => {
             </div>
           </div>
 
-          {/* Refresh Button */}
-          <Button variant="ghost" onClick={fetchToken}>
-            <RefreshCw size={16} />
-          </Button>
+          {/* Action Buttons */}
+          <div className="flex gap-2">
+            <Link to={`/chart/${mint}`}>
+              <Button variant="primary">
+                <BarChart3 size={16} />
+                View Chart
+              </Button>
+            </Link>
+            <Button variant="ghost" onClick={fetchToken}>
+              <RefreshCw size={16} />
+            </Button>
+          </div>
         </div>
 
         {/* Stats Row */}

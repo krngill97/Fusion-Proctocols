@@ -47,4 +47,19 @@ router.get('/volume/:tokenMint', chartController.getVolume);
  */
 router.get('/complete/:tokenMint', chartController.getCompleteChartData);
 
+/**
+ * @route   GET /api/charts/stats/:tokenMint
+ * @desc    Get 24h statistics for a token
+ * @access  Public
+ */
+router.get('/stats/:tokenMint', chartController.get24hStats);
+
+/**
+ * @route   GET /api/charts/trades/:tokenMint
+ * @desc    Get recent trades for a token
+ * @query   limit (default: 100)
+ * @access  Public
+ */
+router.get('/trades/:tokenMint', chartController.getRecentTrades);
+
 export default router;

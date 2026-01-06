@@ -1,0 +1,9 @@
+{
+  "name": "Volume Max Pro",
+  "symbol": "VMAX",
+  "decimals": 9,
+  "supply": 1000000000,
+  "description": "High-volume recycling test token",
+  "image": "https://via.placeholder.com/200",
+  "creatorWallet": "AyzXLQu9X7tHwsoxd39D21Nd1XoS2aLbbTfJ3uwuZ7zn"
+}

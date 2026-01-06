@@ -1,0 +1,9 @@
+{
+  "name": "Chart Test Token",
+  "symbol": "CHART",
+  "description": "Fresh token to test chart functionality with live volume bot",
+  "imageUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICAgIDxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjMjJjNTVlIi8+CiAgICA8dGV4dCB4PSI1MCIgeT0iNTAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSI0OCIgZmlsbD0id2hpdGUiCiAgICAgICAgICB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0iY2VudHJhbCIgZm9udC13ZWlnaHQ9ImJvbGQiPgogICAgICBDCiAgICA8L3RleHQ+CiAgPC9zdmc+",
+  "creator": "4rtJBeBxCAQfvzqKb3hs2sKfgPsbfivr85j3ZhM6Yuzy",
+  "totalSupply": 1000000,
+  "decimals": 9
+}

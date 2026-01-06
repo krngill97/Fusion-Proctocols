@@ -1,0 +1,9 @@
+{
+  "name": "Fusion Real Token",
+  "symbol": "FRT",
+  "description": "Real SPL token on Solana devnet - trackable on Solscan!",
+  "decimals": 9,
+  "initialSupply": 1000000,
+  "privateKey": "5DVanXShMaqKRGHt462KgscneYjsNLDtVWpYpQanqyayXmBEB2buGE7Jc4s6GQ1XVP3prsLsWnE1Xqch7rz9ZizD",
+  "network": "devnet"
+}

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chart API Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #1a1a1a; color: white; }
+        pre { background: #2a2a2a; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        button { background: #22c55e; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; margin: 5px; }
+        button:hover { background: #16a34a; }
+        #result { margin-top: 20px; }
+        .error { color: #ef4444; }
+        .success { color: #22c55e; }
+    </style>
+</head>
+<body>
+    <h1>Chart API Test</h1>
+    <p>Testing direct API access from browser</p>
+
+    <button onclick="testAPI()">Test Chart API</button>
+    <button onclick="testCORS()">Test CORS</button>
+
+    <div id="result"></div>
+
+    <script>
+        const API_URL = 'http://localhost:5001';
+        const TOKEN_MINT = 'x1dQbtG8ZgWZ94Htu39GmUo7ttGbgJmQx1dQbtG8ZgWZ';
+
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Testing API...</p>';
+
+            try {
+                const response = await fetch(`${API_URL}/api/charts/complete/${TOKEN_MINT}?timeframe=1m&limit=5`);
+                const data = await response.json();
+
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <h3 class="success">✅ API Working!</h3>
+                        <p>Status: ${response.status}</p>
+                        <p>Candles returned: ${data.candles.length}</p>
+                        <p>Latest price: $${data.latestPrice.price}</p>
+                        <p>Last candle trades: ${data.candles[data.candles.length - 1].trades}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p class="error">❌ API returned error: ${data.message}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h3 class="error">❌ Failed to fetch</h3>
+                    <p>Error: ${error.message}</p>
+                    <p>This could be a CORS issue or the backend is not running.</p>
+                    <pre>${error.stack}</pre>
+                `;
+            }
+        }
+
+        async function testCORS() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Testing CORS...</p>';
+
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+
+                resultDiv.innerHTML = `
+                    <h3 class="success">✅ CORS Working!</h3>
+                    <p>Backend health: ${data.status}</p>
+                    <p>Response headers allowed access from this origin</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h3 class="error">❌ CORS Error</h3>
+                    <p>Error: ${error.message}</p>
+                    <p>The backend is not allowing requests from this origin (localhost:5175)</p>
+                `;
+            }
+        }
+
+        // Auto-run test on load
+        window.onload = () => testAPI();
+    </script>
+</body>
+</html>

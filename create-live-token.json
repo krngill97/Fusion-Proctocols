@@ -1,0 +1,10 @@
+{
+  "name": "LIVE CHART TEST",
+  "symbol": "LIVE",
+  "description": "Real Solana devnet token for live chart testing with actual blockchain transactions",
+  "decimals": 9,
+  "initialSupply": 1000000000,
+  "twitter": "",
+  "telegram": "",
+  "website": ""
+}

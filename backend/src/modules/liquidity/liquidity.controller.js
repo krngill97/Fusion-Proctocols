@@ -5,6 +5,9 @@
 
 import Joi from 'joi';
 import liquidityService from './liquidity.service.js';
+// TEMPORARILY DISABLED - CommonJS import issue
+// import raydiumPoolService from '../../services/raydium-pool.service.js';
+import simplePoolService from '../../services/simple-pool.service.js';
 
 // Validation schema for creating a pool
 const createPoolSchema = Joi.object({
@@ -248,6 +251,156 @@ class LiquidityController {
       res.status(500).json({
         success: false,
         message: error.message || 'Failed to get pools',
+      });
+    }
+  }
+
+  /**
+   * Create a REAL Raydium pool on-chain
+   * POST /api/liquidity/create-raydium-pool
+   *
+   * WARNING: Requires ~1.5 SOL minimum
+   */
+  async createRaydiumPool(req, res) {
+    try {
+      // Validate request body
+      const { error, value } = createPoolSchema.validate(req.body, {
+        abortEarly: false,
+      });
+
+      if (error) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation failed',
+          errors: error.details.map(detail => ({
+            field: detail.path.join('.'),
+            message: detail.message,
+          })),
+        });
+      }
+
+      console.log('[Liquidity Controller] Creating REAL Raydium pool...');
+
+      // TEMPORARILY DISABLED - Raydium SDK import issue
+      return res.status(503).json({
+        success: false,
+        message: 'Raydium pool creation temporarily disabled due to SDK compatibility issues',
+        hint: 'Use the simple pool creation endpoint instead'
+      });
+
+      // const result = await raydiumPoolService.createCompletePool({
+      //   privateKey: value.walletPrivateKey,
+      //   tokenMint: value.tokenMint,
+      //   solAmount: value.solAmount,
+      //   tokenAmount: value.tokenAmount,
+      //   network: value.network || 'devnet'
+      // });
+      //
+      // res.status(201).json(result);
+
+    } catch (error) {
+      console.error('Create Raydium pool error:', error);
+
+      // SOL balance errors
+      if (error.message.includes('Insufficient SOL')) {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+          hint: 'Raydium pool creation requires approximately 1.5 SOL for rent + liquidity. Request more SOL from devnet faucet.',
+        });
+      }
+
+      // Private key errors
+      if (error.message.includes('private key') || error.message.includes('Invalid')) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid private key format',
+          details: error.message,
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to create Raydium pool',
+      });
+    }
+  }
+
+  /**
+   * Create a simple pool (database tracking only)
+   * POST /api/liquidity/create-simple-pool
+   *
+   * For testing with low SOL balance (<1 SOL)
+   */
+  async createSimplePool(req, res) {
+    try {
+      // Validate request body
+      const { error, value } = createPoolSchema.validate(req.body, {
+        abortEarly: false,
+      });
+
+      if (error) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation failed',
+          errors: error.details.map(detail => ({
+            field: detail.path.join('.'),
+            message: detail.message,
+          })),
+        });
+      }
+
+      console.log('[Liquidity Controller] Creating simple pool (tracking only)...');
+
+      const result = await simplePoolService.createSimplePool({
+        privateKey: value.walletPrivateKey,
+        tokenMint: value.tokenMint,
+        solAmount: value.solAmount,
+        tokenAmount: value.tokenAmount,
+        network: value.network || 'devnet'
+      });
+
+      res.status(201).json(result);
+
+    } catch (error) {
+      console.error('Create simple pool error:', error);
+
+      if (error.message.includes('Insufficient')) {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to create simple pool',
+      });
+    }
+  }
+
+  /**
+   * Check if token has real liquidity on Jupiter
+   * GET /api/liquidity/check-jupiter/:tokenMint
+   */
+  async checkJupiterLiquidity(req, res) {
+    try {
+      const { tokenMint } = req.params;
+      const { network = 'devnet' } = req.query;
+
+      const result = await simplePoolService.checkRealLiquidity(tokenMint, network);
+
+      res.json({
+        success: true,
+        tokenMint,
+        ...result
+      });
+
+    } catch (error) {
+      console.error('Check Jupiter liquidity error:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to check Jupiter liquidity',
       });
     }
   }
